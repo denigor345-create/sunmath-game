@@ -254,11 +254,11 @@ class GameScene extends Phaser.Scene {
         const star = this.physics.add.sprite(100, this.cameras.main.height - 100, null);
         star.setInteractive({ draggable: true });
         
-        // Рисуем звезду с помощью графики
+        // Рисуем звезду с помощью графики (упрощенная версия)
         const starGraphics = this.add.graphics();
         starGraphics.fillStyle(0xffffff, 1);
         
-        // Рисуем пятиконечную звезду
+        // Рисуем пятиконечную звезду (простая версия)
         const points = 5;
         const outerRadius = 25;
         const innerRadius = 12;
