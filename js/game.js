@@ -1,9 +1,5 @@
-// Основная игровая логика
-let game;
-let levelManager;
-let currentScene = null;
-
-const GameConfig = {
+// Основная конфигурация игры
+const config = {
     type: Phaser.AUTO,
     width: window.innerWidth,
     height: window.innerHeight,
@@ -18,18 +14,31 @@ const GameConfig = {
     },
     scene: [MainScene, GameScene],
     scale: {
-        mode: Phaser.Scale.RESIZE,
+        mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
     }
 };
 
-// Инициализация игры когда DOM готов
+// Глобальные переменные
+let game;
+let levelManager;
+
+// Запуск игры когда страница загружена
 window.addEventListener('DOMContentLoaded', function() {
-    game = new Phaser.Game(GameConfig);
+    console.log('DOM loaded, initializing game...');
+    
+    // Инициализируем менеджер уровней
     levelManager = new LevelManager();
+    console.log('Level manager initialized');
+    
+    // Создаем игру
+    game = new Phaser.Game(config);
+    console.log('Phaser game created');
 });
 
-// Сохраняем ссылку на текущую сцену для Telegram BackButton
-Phaser.Scene.prototype.create = function() {
-    window.currentScene = this;
+// Утилиты для отладки
+window.debugGame = function() {
+    console.log('Game:', game);
+    console.log('Level Manager:', levelManager);
+    console.log('Current Scene:', game.scene.getScenes(true));
 };
