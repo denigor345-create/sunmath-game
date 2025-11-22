@@ -164,16 +164,12 @@ class GameScene extends Phaser.Scene {
 
     init() {
         console.log('GameScene: init');
-        // Включаем кнопку "Назад" в Telegram
-        if (window.TelegramBridge) {
-            window.TelegramBridge.setBackButton(true);
-        }
+        this.gameActive = true;
     }
 
     create() {
         console.log('GameScene: create');
         
-        this.gameActive = true;
         this.currentLevelData = levelManager.getCurrentLevel();
         console.log('Current level data:', this.currentLevelData);
         
@@ -195,54 +191,46 @@ class GameScene extends Phaser.Scene {
     }
 
     createBackground() {
-        // Градиентный фон
-        const graphics = this.add.graphics();
-        const height = this.cameras.main.height;
-        graphics.fillGradientStyle(0x1a1a2e, 0x1a1a2e, 0x16213e, 0x16213e, 1);
-        graphics.fillRect(0, 0, this.cameras.main.width, height);
+        // Простой фон
+        this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0x1a1a2e)
+            .setOrigin(0);
         
-        // Звезды на фоне
-        for (let i = 0; i < 50; i++) {
-            const x = Phaser.Math.Between(0, this.cameras.main.width);
-            const y = Phaser.Math.Between(0, this.cameras.main.height);
-            const size = Phaser.Math.FloatBetween(0.5, 2);
-            this.add.circle(x, y, size, 0xffffff, 0.3);
+        // Добавляем несколько звездочек на фон для атмосферы
+        for (let i = 0; i < 20; i++) {
+            const x = Phaser.Math.Between(50, this.cameras.main.width - 50);
+            const y = Phaser.Math.Between(50, this.cameras.main.height - 50);
+            const size = Phaser.Math.FloatBetween(1, 3);
+            this.add.circle(x, y, size, 0xffffff, 0.5);
         }
     }
 
     createSun() {
-        // Солнце в верхней части
-        this.sun = this.physics.add.sprite(this.cameras.main.centerX, 150, null);
-        this.sun.setImmovable(true);
-        
-        // Рисуем солнце
-        const sunGraphics = this.add.graphics();
-        sunGraphics.fillStyle(0xffeb3b, 1);
-        sunGraphics.fillCircle(0, 0, 40);
-        sunGraphics.lineStyle(4, 0xff9800, 1);
-        sunGraphics.strokeCircle(0, 0, 45);
-        sunGraphics.generateTexture('sun', 90, 90);
-        sunGraphics.destroy();
-        
-        this.sun.setTexture('sun');
+        // Солнце - большой желтый круг
+        this.sun = this.add.circle(this.cameras.main.centerX, 150, 50, 0xffeb3b);
+        this.sun.setStrokeStyle(6, 0xff9800);
         
         // Свечение вокруг солнца
-        const glow = this.add.circle(this.sun.x, this.sun.y, 60, 0xff9800, 0.3);
+        const glow = this.add.circle(this.sun.x, this.sun.y, 70, 0xff9800, 0.3);
+        
+        // Анимация свечения
         this.tweens.add({
             targets: glow,
             scaleX: 1.2,
             scaleY: 1.2,
-            duration: 1000,
+            duration: 1500,
             yoyo: true,
-            repeat: -1
+            repeat: -1,
+            ease: 'Sine.easeInOut'
         });
         
-        // Отображаем название уровня
+        // Название уровня
         this.add.text(this.cameras.main.centerX, 30, this.currentLevelData.name, {
-            fontSize: '18px',
+            fontSize: '20px',
             fill: '#ffffff',
             backgroundColor: '#000000',
-            padding: { x: 10, y: 5 }
+            padding: { x: 15, y: 8 },
+            fontFamily: 'Arial',
+            fontWeight: 'bold'
         }).setOrigin(0.5);
     }
 
@@ -252,61 +240,129 @@ class GameScene extends Phaser.Scene {
 
     createQuestionManager() {
         this.questionManager = new QuestionManager(this.currentLevelData.questions);
+        console.log('Question manager created with', this.currentLevelData.questions.length, 'questions');
     }
 
     createNewStar() {
-    if (this.score.total >= this.currentLevelData.questionsCount || !this.gameActive) {
-        return;
+        if (this.score.total >= this.currentLevelData.questionsCount || !this.gameActive) {
+            return;
+        }
+
+        console.log('Creating new star...');
+        
+        // Создаем звезду как физический спрайт
+        const star = this.physics.add.sprite(100, this.cameras.main.height - 100, null);
+        star.setInteractive({ draggable: true });
+        
+        // Рисуем звезду с помощью графики
+        const starGraphics = this.add.graphics();
+        starGraphics.fillStyle(0xffffff, 1);
+        
+        // Рисуем пятиконечную звезду
+        const points = 5;
+        const outerRadius = 25;
+        const innerRadius = 12;
+        
+        starGraphics.beginPath();
+        
+        for (let i = 0; i < points * 2; i++) {
+            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+            const angle = (Math.PI / points) * i - Math.PI / 2;
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            
+            if (i === 0) {
+                starGraphics.moveTo(x, y);
+            } else {
+                starGraphics.lineTo(x, y);
+            }
+        }
+        
+        starGraphics.closePath();
+        starGraphics.fillPath();
+        
+        // Создаем текстуру из графики
+        starGraphics.generateTexture('star', 50, 50);
+        starGraphics.destroy();
+        
+        // Устанавливаем текстуру звезде
+        star.setTexture('star');
+        
+        // Создаем отдельный текст для знака вопроса
+        star.questionText = this.add.text(star.x, star.y, '?', {
+            fontSize: '16px',
+            fill: '#000000',
+            fontWeight: 'bold',
+            fontFamily: 'Arial'
+        }).setOrigin(0.5);
+        
+        // Сохраняем данные вопроса в звезде
+        star.questionData = this.questionManager.getRandomQuestion();
+        
+        // Добавляем звезду в группу
+        this.stars.add(star);
+        
+        console.log('New star created with question:', star.questionData.question);
+        
+        return star;
     }
 
-    console.log('Creating new star...');
-    
-    const star = this.physics.add.sprite(100, this.cameras.main.height - 100, null);
-    star.setInteractive({ draggable: true });
-    
-    // Рисуем звезду
-    const starGraphics = this.add.graphics();
-    starGraphics.fillStyle(0xffffff, 1);
-    this.drawStar(starGraphics, 0, 0, 5, 20, 10);
-    starGraphics.generateTexture('star', 40, 40);
-    starGraphics.destroy();
-    
-    star.setTexture('star');
-    star.setScale(0.8);
-    
-    // Создаем отдельный текст для вопроса и сохраняем ссылку на него
-    star.questionText = this.add.text(star.x, star.y, '?', {
-        fontSize: '14px',
-        fill: '#000000',
-        fontWeight: 'bold'
-    }).setOrigin(0.5);
-    
-    // Сохраняем данные вопроса в звезде
-    star.questionData = this.questionManager.getRandomQuestion();
-    
-    // Добавляем звезду в группу
-    this.stars.add(star);
-    
-    // Плавное появление
-    star.setAlpha(0);
-    star.questionText.setAlpha(0);
-    this.tweens.add({
-        targets: [star, star.questionText],
-        alpha: 1,
-        duration: 500
-    });
-    
-    console.log('New star created with question:', star.questionData.question);
-}
+    setupTimer() {
+        this.timer = this.time.addEvent({
+            delay: 1000,
+            callback: this.updateTimer,
+            callbackScope: this,
+            loop: true
+        });
+        console.log('Timer started:', this.timeLeft, 'seconds');
+    }
+
+    setupDragAndDrop() {
+        this.input.on('dragstart', (pointer, gameObject) => {
+            if (!this.gameActive) return;
+            this.currentStar = gameObject;
+            // Поднимаем звезду и текст на верхний слой
+            this.children.bringToTop(gameObject);
+            if (gameObject.questionText) {
+                this.children.bringToTop(gameObject.questionText);
+            }
+            // Эффект выделения
+            gameObject.setTint(0xffff00);
+            console.log('Star drag started');
+        });
+
+        this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
+            if (!this.gameActive) return;
+            gameObject.x = dragX;
+            gameObject.y = dragY;
+            // Перемещаем текст вместе со звездой
+            if (gameObject.questionText) {
+                gameObject.questionText.x = dragX;
+                gameObject.questionText.y = dragY;
+            }
+        });
+
+        this.input.on('dragend', (pointer, gameObject) => {
+            if (!this.gameActive) return;
+            gameObject.clearTint();
+            this.checkStarSunCollision(gameObject);
+            console.log('Star drag ended at:', gameObject.x, gameObject.y);
+        });
+    }
+
     checkStarSunCollision(star) {
         const distance = Phaser.Math.Distance.Between(
             star.x, star.y, 
             this.sun.x, this.sun.y
         );
         
-        if (distance < 100) {
+        console.log('Distance to sun:', distance);
+        
+        if (distance < 120) { // Увеличили радиус collision
+            console.log('Star reached the sun! Showing question...');
             this.showQuestionPopup(star);
         } else {
+            console.log('Star too far from sun, returning to start');
             this.returnStarToStart(star);
         }
     }
@@ -317,12 +373,16 @@ class GameScene extends Phaser.Scene {
             x: 100,
             y: this.cameras.main.height - 100,
             duration: 600,
-            ease: 'Back.easeOut'
+            ease: 'Back.easeOut',
+            onComplete: () => {
+                console.log('Star returned to start position');
+            }
         });
     }
 
     showQuestionPopup(star) {
         this.gameActive = false;
+        console.log('Showing question popup for:', star.questionData.question);
         
         const question = star.questionData;
         const popup = document.createElement('div');
@@ -343,6 +403,7 @@ class GameScene extends Phaser.Scene {
         popup.querySelectorAll('.answer-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const selectedAnswer = parseInt(e.target.dataset.index);
+                console.log('Answer selected:', selectedAnswer, 'Correct:', question.correct);
                 this.handleAnswer(selectedAnswer, question.correct, star, popup);
             });
         });
@@ -352,31 +413,41 @@ class GameScene extends Phaser.Scene {
         this.score.total++;
         const isCorrect = selected === correct;
         
+        console.log('Answer handled. Correct:', isCorrect, 'Score:', this.score);
+        
         if (isCorrect) {
             this.score.correct++;
-            // Анимация правильного ответа
+            // Анимация правильного ответа - звезда исчезает в солнце
             this.correctAnswerAnimation(star);
         } else {
-            // Анимация неправильного ответа
+            // Анимация неправильного ответа - звезда возвращается
             this.incorrectAnswerAnimation(star);
         }
         
+        // Убираем попап
         document.body.removeChild(popup);
+        
+        // Обновляем интерфейс
         this.updateUI();
         
+        // Проверяем завершение уровня
         if (this.score.total >= this.currentLevelData.questionsCount) {
+            console.log('Level completed! Correct answers:', this.score.correct, 'Total:', this.score.total);
             this.endLevel();
         } else {
             this.gameActive = true;
             if (isCorrect) {
-                this.createNewStar();
-            } else {
-                this.returnStarToStart(star);
+                // Создаем новую звезду после правильного ответа
+                this.time.delayedCall(500, () => {
+                    this.createNewStar();
+                });
             }
         }
     }
 
     correctAnswerAnimation(star) {
+        console.log('Playing correct answer animation');
+        
         // Анимация поглощения звезды солнцем
         this.tweens.add({
             targets: [star, star.questionText],
@@ -387,6 +458,7 @@ class GameScene extends Phaser.Scene {
             duration: 800,
             ease: 'Power2',
             onComplete: () => {
+                // Уничтожаем объекты после анимации
                 star.destroy();
                 if (star.questionText) {
                     star.questionText.destroy();
@@ -396,11 +468,14 @@ class GameScene extends Phaser.Scene {
                 this.time.delayedCall(200, () => {
                     this.sun.clearTint();
                 });
+                console.log('Correct answer animation completed');
             }
         });
     }
 
     incorrectAnswerAnimation(star) {
+        console.log('Playing incorrect answer animation');
+        
         // Анимация отбрасывания звезды
         star.setTint(0xff0000);
         this.tweens.add({
@@ -411,6 +486,7 @@ class GameScene extends Phaser.Scene {
             ease: 'Bounce.easeOut',
             onComplete: () => {
                 star.clearTint();
+                console.log('Incorrect answer animation completed');
             }
         });
     }
@@ -421,8 +497,16 @@ class GameScene extends Phaser.Scene {
         this.timeLeft--;
         this.updateUI();
         
+        console.log('Time left:', this.timeLeft);
+        
         if (this.timeLeft <= 0) {
+            console.log('Time is up! Ending level...');
             this.endLevel();
+        }
+        
+        // Меняем цвет таймера когда мало времени
+        if (this.timeLeft <= 10) {
+            document.getElementById('timer').style.color = '#ff4444';
         }
     }
 
@@ -430,18 +514,25 @@ class GameScene extends Phaser.Scene {
         document.getElementById('timer').textContent = `Время: ${this.timeLeft}`;
         document.getElementById('score').textContent = 
             `Верно: ${this.score.correct}/${this.currentLevelData.questionsCount}`;
-        document.getElementById('progress').textContent = 
-            `Прогресс: ${Math.round((this.score.correct / this.currentLevelData.questionsCount) * 100)}%`;
-        document.getElementById('level').textContent = 
-            `Уровень: ${levelManager.currentLevel}`;
+        
+        const progressPercent = Math.round((this.score.correct / this.currentLevelData.questionsCount) * 100);
+        document.getElementById('progress').textContent = `Прогресс: ${progressPercent}%`;
+        
+        document.getElementById('level').textContent = `Уровень: ${levelManager.currentLevel}`;
     }
 
     endLevel() {
         this.gameActive = false;
-        if (this.timer) this.timer.remove();
+        
+        // Останавливаем таймер
+        if (this.timer) {
+            this.timer.remove();
+        }
         
         const successRate = (this.score.correct / this.currentLevelData.questionsCount) * 100;
         const levelPassed = levelManager.completeLevel(levelManager.currentLevel, successRate);
+        
+        console.log('Level ended. Success rate:', successRate, 'Passed:', levelPassed);
         
         // Отправляем результаты в Telegram
         if (window.TelegramBridge && window.TelegramBridge.sendData) {
@@ -494,6 +585,7 @@ class GameScene extends Phaser.Scene {
         
         // Обработчики кнопок
         document.getElementById('retryLevel').addEventListener('click', () => {
+            console.log('Retry level clicked');
             document.body.removeChild(resultsDiv);
             this.scene.restart();
         });
@@ -502,6 +594,7 @@ class GameScene extends Phaser.Scene {
         if (nextLevelBtn) {
             nextLevelBtn.addEventListener('click', () => {
                 if (levelPassed) {
+                    console.log('Next level clicked');
                     levelManager.unlockNextLevel();
                     document.body.removeChild(resultsDiv);
                     this.scene.restart();
@@ -510,13 +603,22 @@ class GameScene extends Phaser.Scene {
         }
         
         document.getElementById('levelSelect').addEventListener('click', () => {
+            console.log('Level select clicked');
             document.body.removeChild(resultsDiv);
             this.scene.start('MainScene');
         });
     }
 
     update() {
-        // Дополнительная логика обновления кадра
+        // Дополнительная логика обновления кадра (если нужна)
+    }
+
+    shutdown() {
+        console.log('GameScene shutdown');
+        // Очистка при закрытии сцены
+        if (this.timer) {
+            this.timer.remove();
+        }
     }
 }
 
@@ -525,5 +627,3 @@ window.MainScene = MainScene;
 window.GameScene = GameScene;
 
 console.log('Scenes.js loaded successfully');
-
-
