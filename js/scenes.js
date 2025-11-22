@@ -205,28 +205,16 @@ class GameScene extends Phaser.Scene {
     }
 
     createSun() {
-        // Создаем солнце как спрайт для поддержки setTint
-        this.sun = this.physics.add.sprite(this.cameras.main.centerX, 150, null);
-        this.sun.setImmovable(true);
-        
-        // Рисуем солнце с помощью графики
-        const sunGraphics = this.add.graphics();
-        sunGraphics.fillStyle(0xffeb3b, 1);
-        sunGraphics.fillCircle(0, 0, 50);
-        sunGraphics.lineStyle(6, 0xff9800, 1);
-        sunGraphics.strokeCircle(0, 0, 50);
-        sunGraphics.generateTexture('sun', 100, 100);
-        sunGraphics.destroy();
-        
-        // Устанавливаем текстуру солнцу
-        this.sun.setTexture('sun');
+        // Солнце - простой круг (не используем setTint)
+        this.sun = this.add.circle(this.cameras.main.centerX, 150, 50, 0xffeb3b);
+        this.sun.setStrokeStyle(6, 0xff9800);
         
         // Свечение вокруг солнца
-        const glow = this.add.circle(this.sun.x, this.sun.y, 70, 0xff9800, 0.3);
+        this.glow = this.add.circle(this.sun.x, this.sun.y, 70, 0xff9800, 0.3);
         
         // Анимация свечения
         this.tweens.add({
-            targets: glow,
+            targets: this.glow,
             scaleX: 1.2,
             scaleY: 1.2,
             duration: 1500,
@@ -262,43 +250,10 @@ class GameScene extends Phaser.Scene {
 
         console.log('Creating new star...');
         
-        // Создаем звезду как физический спрайт
-        const star = this.physics.add.sprite(100, this.cameras.main.height - 100, null);
+        // Создаем звезду как круг (простой вариант)
+        const star = this.add.circle(100, this.cameras.main.height - 100, 25, 0xffffff);
         star.setInteractive({ draggable: true });
-        
-        // Рисуем звезду с помощью графики (упрощенная версия)
-        const starGraphics = this.add.graphics();
-        starGraphics.fillStyle(0xffffff, 1);
-        
-        // Рисуем пятиконечную звезду (простая версия)
-        const points = 5;
-        const outerRadius = 25;
-        const innerRadius = 12;
-        
-        starGraphics.beginPath();
-        
-        for (let i = 0; i < points * 2; i++) {
-            const radius = i % 2 === 0 ? outerRadius : innerRadius;
-            const angle = (Math.PI / points) * i - Math.PI / 2;
-            const x = Math.cos(angle) * radius;
-            const y = Math.sin(angle) * radius;
-            
-            if (i === 0) {
-                starGraphics.moveTo(x, y);
-            } else {
-                starGraphics.lineTo(x, y);
-            }
-        }
-        
-        starGraphics.closePath();
-        starGraphics.fillPath();
-        
-        // Создаем текстуру из графики
-        starGraphics.generateTexture('star', 50, 50);
-        starGraphics.destroy();
-        
-        // Устанавливаем текстуру звезде
-        star.setTexture('star');
+        star.setStrokeStyle(3, 0xffff00);
         
         // Создаем отдельный текст для знака вопроса
         star.questionText = this.add.text(star.x, star.y, '?', {
@@ -338,8 +293,8 @@ class GameScene extends Phaser.Scene {
             if (gameObject.questionText) {
                 this.children.bringToTop(gameObject.questionText);
             }
-            // Эффект выделения
-            gameObject.setTint(0xffff00);
+            // Эффект выделения - меняем цвет обводки
+            gameObject.strokeColor = 0xff0000;
             console.log('Star drag started');
         });
 
@@ -356,7 +311,8 @@ class GameScene extends Phaser.Scene {
 
         this.input.on('dragend', (pointer, gameObject) => {
             if (!this.gameActive) return;
-            gameObject.clearTint();
+            // Возвращаем обычный цвет обводки
+            gameObject.strokeColor = 0xffff00;
             this.checkStarSunCollision(gameObject);
             console.log('Star drag ended at:', gameObject.x, gameObject.y);
         });
@@ -370,7 +326,7 @@ class GameScene extends Phaser.Scene {
         
         console.log('Distance to sun:', distance);
         
-        if (distance < 120) { // Увеличили радиус collision
+        if (distance < 120) {
             console.log('Star reached the sun! Showing question...');
             this.showQuestionPopup(star);
         } else {
@@ -475,10 +431,15 @@ class GameScene extends Phaser.Scene {
                 if (star.questionText) {
                     star.questionText.destroy();
                 }
-                // Эффект вспышки солнца (теперь setTint работает, т.к. sun - спрайт)
-                this.sun.setTint(0x00ff00);
-                this.time.delayedCall(200, () => {
-                    this.sun.clearTint();
+                // Эффект вспышки солнца - увеличиваем свечение
+                this.tweens.add({
+                    targets: this.glow,
+                    scaleX: 1.5,
+                    scaleY: 1.5,
+                    alpha: 0.8,
+                    duration: 200,
+                    yoyo: true,
+                    ease: 'Power2'
                 });
                 console.log('Correct answer animation completed');
             }
@@ -488,8 +449,10 @@ class GameScene extends Phaser.Scene {
     incorrectAnswerAnimation(star) {
         console.log('Playing incorrect answer animation');
         
-        // Анимация отбрасывания звезды
-        star.setTint(0xff0000);
+        // Анимация отбрасывания звезды - меняем цвет заливки
+        const originalColor = star.fillColor;
+        star.fillColor = 0xff4444;
+        
         this.tweens.add({
             targets: [star, star.questionText],
             x: 100,
@@ -497,7 +460,7 @@ class GameScene extends Phaser.Scene {
             duration: 800,
             ease: 'Bounce.easeOut',
             onComplete: () => {
-                star.clearTint();
+                star.fillColor = originalColor;
                 console.log('Incorrect answer animation completed');
             }
         });
