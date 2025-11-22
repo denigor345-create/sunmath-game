@@ -1,14 +1,18 @@
+console.log('Scenes.js loading...');
+
 class MainScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainScene' });
+        console.log('MainScene constructor');
     }
 
     preload() {
-        console.log('MainScene: preload');
+        console.log('MainScene: preload started');
     }
 
     create() {
-        console.log('MainScene: create');
+        console.log('MainScene: create started');
+        console.log('Camera size:', this.cameras.main.width, 'x', this.cameras.main.height);
         
         // Включаем кнопку "Назад" в Telegram
         if (window.TelegramBridge) {
@@ -48,14 +52,16 @@ class MainScene extends Phaser.Scene {
     }
 
     createLevelButtons() {
+        console.log('Creating level buttons...');
+        
         const totalLevels = levelManager.getTotalLevels();
-        const buttonSize = 70;
-        const spacing = 15;
-        const startX = this.cameras.main.centerX - ((totalLevels * (buttonSize + spacing)) / 2) + (buttonSize / 2);
-        const startY = this.cameras.main.centerY - 50;
-
+        console.log('Total levels:', totalLevels);
+        
+        const buttonSize = 80;
+        const startY = this.cameras.main.centerY;
+        
         for (let i = 1; i <= totalLevels; i++) {
-            const x = startX + (i - 1) * (buttonSize + spacing);
+            const x = this.cameras.main.centerX + (i - 2.5) * 100;
             const y = startY;
 
             // Фон кнопки уровня
@@ -169,6 +175,7 @@ class GameScene extends Phaser.Scene {
         
         this.gameActive = true;
         this.currentLevelData = levelManager.getCurrentLevel();
+        console.log('Current level data:', this.currentLevelData);
         
         // Инициализируем счет
         this.score = { correct: 0, total: 0 };
@@ -252,6 +259,8 @@ class GameScene extends Phaser.Scene {
             return;
         }
 
+        console.log('Creating new star...');
+        
         const star = this.physics.add.sprite(100, this.cameras.main.height - 100, null);
         star.setInteractive({ draggable: true });
         
@@ -265,24 +274,29 @@ class GameScene extends Phaser.Scene {
         star.setTexture('star');
         star.setScale(0.8);
         
-        // Добавляем текст вопроса
-        const questionText = this.add.text(0, 0, '?', {
+        // Создаем отдельный текст для вопроса
+        star.questionText = this.add.text(star.x, star.y, '?', {
             fontSize: '14px',
             fill: '#000000',
             fontWeight: 'bold'
         }).setOrigin(0.5);
-        star.add(questionText);
         
+        // Сохраняем ссылку на текст в звезде
         star.questionData = this.questionManager.getRandomQuestion();
+        
+        // Добавляем звезду в группу
         this.stars.add(star);
         
         // Плавное появление
         star.setAlpha(0);
+        star.questionText.setAlpha(0);
         this.tweens.add({
-            targets: star,
+            targets: [star, star.questionText],
             alpha: 1,
             duration: 500
         });
+        
+        console.log('New star created with question:', star.questionData.question);
     }
 
     drawStar(graphics, cx, cy, spikes, outerRadius, innerRadius) {
@@ -323,6 +337,9 @@ class GameScene extends Phaser.Scene {
             if (!this.gameActive) return;
             this.currentStar = gameObject;
             this.children.bringToTop(gameObject);
+            if (gameObject.questionText) {
+                this.children.bringToTop(gameObject.questionText);
+            }
             gameObject.setTint(0xffeb3b);
         });
 
@@ -330,6 +347,11 @@ class GameScene extends Phaser.Scene {
             if (!this.gameActive) return;
             gameObject.x = dragX;
             gameObject.y = dragY;
+            // Перемещаем текст вместе со звездой
+            if (gameObject.questionText) {
+                gameObject.questionText.x = dragX;
+                gameObject.questionText.y = dragY;
+            }
         });
 
         this.input.on('dragend', (pointer, gameObject) => {
@@ -354,7 +376,7 @@ class GameScene extends Phaser.Scene {
 
     returnStarToStart(star) {
         this.tweens.add({
-            targets: star,
+            targets: [star, star.questionText],
             x: 100,
             y: this.cameras.main.height - 100,
             duration: 600,
@@ -420,7 +442,7 @@ class GameScene extends Phaser.Scene {
     correctAnswerAnimation(star) {
         // Анимация поглощения звезды солнцем
         this.tweens.add({
-            targets: star,
+            targets: [star, star.questionText],
             x: this.sun.x,
             y: this.sun.y,
             scale: 0,
@@ -429,6 +451,9 @@ class GameScene extends Phaser.Scene {
             ease: 'Power2',
             onComplete: () => {
                 star.destroy();
+                if (star.questionText) {
+                    star.questionText.destroy();
+                }
                 // Эффект вспышки солнца
                 this.sun.setTint(0x00ff00);
                 this.time.delayedCall(200, () => {
@@ -442,7 +467,7 @@ class GameScene extends Phaser.Scene {
         // Анимация отбрасывания звезды
         star.setTint(0xff0000);
         this.tweens.add({
-            targets: star,
+            targets: [star, star.questionText],
             x: 100,
             y: this.cameras.main.height - 100,
             duration: 800,
@@ -561,3 +586,6 @@ class GameScene extends Phaser.Scene {
 // Убедитесь что классы доступны глобально
 window.MainScene = MainScene;
 window.GameScene = GameScene;
+
+console.log('Scenes.js loaded successfully');
+
