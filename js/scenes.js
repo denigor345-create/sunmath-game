@@ -205,9 +205,21 @@ class GameScene extends Phaser.Scene {
     }
 
     createSun() {
-        // Солнце - большой желтый круг
-        this.sun = this.add.circle(this.cameras.main.centerX, 150, 50, 0xffeb3b);
-        this.sun.setStrokeStyle(6, 0xff9800);
+        // Создаем солнце как спрайт для поддержки setTint
+        this.sun = this.physics.add.sprite(this.cameras.main.centerX, 150, null);
+        this.sun.setImmovable(true);
+        
+        // Рисуем солнце с помощью графики
+        const sunGraphics = this.add.graphics();
+        sunGraphics.fillStyle(0xffeb3b, 1);
+        sunGraphics.fillCircle(0, 0, 50);
+        sunGraphics.lineStyle(6, 0xff9800, 1);
+        sunGraphics.strokeCircle(0, 0, 50);
+        sunGraphics.generateTexture('sun', 100, 100);
+        sunGraphics.destroy();
+        
+        // Устанавливаем текстуру солнцу
+        this.sun.setTexture('sun');
         
         // Свечение вокруг солнца
         const glow = this.add.circle(this.sun.x, this.sun.y, 70, 0xff9800, 0.3);
@@ -463,7 +475,7 @@ class GameScene extends Phaser.Scene {
                 if (star.questionText) {
                     star.questionText.destroy();
                 }
-                // Эффект вспышки солнца
+                // Эффект вспышки солнца (теперь setTint работает, т.к. sun - спрайт)
                 this.sun.setTint(0x00ff00);
                 this.time.delayedCall(200, () => {
                     this.sun.clearTint();
