@@ -255,112 +255,49 @@ class GameScene extends Phaser.Scene {
     }
 
     createNewStar() {
-        if (this.score.total >= this.currentLevelData.questionsCount || !this.gameActive) {
-            return;
-        }
-
-        console.log('Creating new star...');
-        
-        const star = this.physics.add.sprite(100, this.cameras.main.height - 100, null);
-        star.setInteractive({ draggable: true });
-        
-        // Рисуем звезду
-        const starGraphics = this.add.graphics();
-        starGraphics.fillStyle(0xffffff, 1);
-        this.drawStar(starGraphics, 0, 0, 5, 20, 10);
-        starGraphics.generateTexture('star', 40, 40);
-        starGraphics.destroy();
-        
-        star.setTexture('star');
-        star.setScale(0.8);
-        
-        // Создаем отдельный текст для вопроса
-        star.questionText = this.add.text(star.x, star.y, '?', {
-            fontSize: '14px',
-            fill: '#000000',
-            fontWeight: 'bold'
-        }).setOrigin(0.5);
-        
-        // Сохраняем ссылку на текст в звезде
-        star.questionData = this.questionManager.getRandomQuestion();
-        
-        // Добавляем звезду в группу
-        this.stars.add(star);
-        
-        // Плавное появление
-        star.setAlpha(0);
-        star.questionText.setAlpha(0);
-        this.tweens.add({
-            targets: [star, star.questionText],
-            alpha: 1,
-            duration: 500
-        });
-        
-        console.log('New star created with question:', star.questionData.question);
+    if (this.score.total >= this.currentLevelData.questionsCount || !this.gameActive) {
+        return;
     }
 
-    drawStar(graphics, cx, cy, spikes, outerRadius, innerRadius) {
-        let rot = Math.PI / 2 * 3;
-        let step = Math.PI / spikes;
-
-        graphics.beginPath();
-        graphics.moveTo(cx, cy - outerRadius);
-
-        for (let i = 0; i < spikes; i++) {
-            let x = cx + Math.cos(rot) * outerRadius;
-            let y = cy + Math.sin(rot) * outerRadius;
-            graphics.lineTo(x, y);
-            rot += step;
-
-            x = cx + Math.cos(rot) * innerRadius;
-            y = cy + Math.sin(rot) * innerRadius;
-            graphics.lineTo(x, y);
-            rot += step;
-        }
-
-        graphics.lineTo(cx, cy - outerRadius);
-        graphics.closePath();
-        graphics.fillPath();
-    }
-
-    setupTimer() {
-        this.timer = this.time.addEvent({
-            delay: 1000,
-            callback: this.updateTimer,
-            callbackScope: this,
-            loop: true
-        });
-    }
-
-    setupDragAndDrop() {
-        this.input.on('dragstart', (pointer, gameObject) => {
-            if (!this.gameActive) return;
-            this.currentStar = gameObject;
-            this.children.bringToTop(gameObject);
-            if (gameObject.questionText) {
-                this.children.bringToTop(gameObject.questionText);
-            }
-            gameObject.setTint(0xffeb3b);
-        });
-
-        this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
-            if (!this.gameActive) return;
-            gameObject.x = dragX;
-            gameObject.y = dragY;
-            // Перемещаем текст вместе со звездой
-            if (gameObject.questionText) {
-                gameObject.questionText.x = dragX;
-                gameObject.questionText.y = dragY;
-            }
-        });
-
-        this.input.on('dragend', (pointer, gameObject) => {
-            if (!this.gameActive) return;
-            gameObject.clearTint();
-            this.checkStarSunCollision(gameObject);
-        });
-    }
-
+    console.log('Creating new star...');
+    
+    const star = this.physics.add.sprite(100, this.cameras.main.height - 100, null);
+    star.setInteractive({ draggable: true });
+    
+    // Рисуем звезду
+    const starGraphics = this.add.graphics();
+    starGraphics.fillStyle(0xffffff, 1);
+    this.drawStar(starGraphics, 0, 0, 5, 20, 10);
+    starGraphics.generateTexture('star', 40, 40);
+    starGraphics.destroy();
+    
+    star.setTexture('star');
+    star.setScale(0.8);
+    
+    // Создаем отдельный текст для вопроса и сохраняем ссылку на него
+    star.questionText = this.add.text(star.x, star.y, '?', {
+        fontSize: '14px',
+        fill: '#000000',
+        fontWeight: 'bold'
+    }).setOrigin(0.5);
+    
+    // Сохраняем данные вопроса в звезде
+    star.questionData = this.questionManager.getRandomQuestion();
+    
+    // Добавляем звезду в группу
+    this.stars.add(star);
+    
+    // Плавное появление
+    star.setAlpha(0);
+    star.questionText.setAlpha(0);
+    this.tweens.add({
+        targets: [star, star.questionText],
+        alpha: 1,
+        duration: 500
+    });
+    
+    console.log('New star created with question:', star.questionData.question);
+}
     checkStarSunCollision(star) {
         const distance = Phaser.Math.Distance.Between(
             star.x, star.y, 
@@ -588,4 +525,5 @@ window.MainScene = MainScene;
 window.GameScene = GameScene;
 
 console.log('Scenes.js loaded successfully');
+
 
