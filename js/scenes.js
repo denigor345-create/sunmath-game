@@ -165,6 +165,7 @@ class GameScene extends Phaser.Scene {
     init() {
         console.log('GameScene: init');
         this.gameActive = true;
+        this.currentPopup = null; // Для хранения ссылки на текущий попап
     }
 
     create() {
@@ -349,7 +350,8 @@ class GameScene extends Phaser.Scene {
     }
 
     showQuestionPopup(star) {
-        this.gameActive = false;
+        this.gameActive = false; // Игра на паузе, но таймер продолжает работать!
+        
         console.log('Showing question popup for:', star.questionData.question);
         
         const question = star.questionData;
@@ -357,7 +359,12 @@ class GameScene extends Phaser.Scene {
         popup.className = 'question-popup';
         
         popup.innerHTML = `
-            <h3>${question.question}</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">${question.question}</h3>
+                <div id="popup-timer" style="background: #ff9800; color: white; padding: 5px 10px; border-radius: 10px; font-weight: bold;">
+                    ${this.timeLeft} сек
+                </div>
+            </div>
             <div class="answers-container">
                 ${question.answers.map((answer, index) => 
                     `<button class="answer-btn" data-index="${index}">${answer}</button>`
@@ -367,17 +374,24 @@ class GameScene extends Phaser.Scene {
         
         document.body.appendChild(popup);
         
+        // Сохраняем ссылку на попап для обновления таймера
+        this.currentPopup = popup;
+        
         // Обработчики ответов
         popup.querySelectorAll('.answer-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const selectedAnswer = parseInt(e.target.dataset.index);
                 console.log('Answer selected:', selectedAnswer, 'Correct:', question.correct);
+                this.currentPopup = null; // Очищаем ссылку
                 this.handleAnswer(selectedAnswer, question.correct, star, popup);
             });
         });
     }
 
     handleAnswer(selected, correct, star, popup) {
+        // Сразу убираем попап
+        document.body.removeChild(popup);
+        
         this.score.total++;
         const isCorrect = selected === correct;
         
@@ -392,9 +406,6 @@ class GameScene extends Phaser.Scene {
             this.incorrectAnswerAnimation(star);
         }
         
-        // Убираем попап
-        document.body.removeChild(popup);
-        
         // Обновляем интерфейс
         this.updateUI();
         
@@ -403,6 +414,7 @@ class GameScene extends Phaser.Scene {
             console.log('Level completed! Correct answers:', this.score.correct, 'Total:', this.score.total);
             this.endLevel();
         } else {
+            // Таймер продолжает работать, не нужно его возобновлять
             this.gameActive = true;
             if (isCorrect) {
                 // Создаем новую звезду после правильного ответа
@@ -467,21 +479,47 @@ class GameScene extends Phaser.Scene {
     }
 
     updateTimer() {
-        if (!this.gameActive) return;
+        // Таймер работает ВСЕГДА, даже во время показа вопроса!
         
         this.timeLeft--;
         this.updateUI();
+        
+        // Обновляем таймер в попапе, если он открыт
+        if (this.currentPopup) {
+            const popupTimer = document.getElementById('popup-timer');
+            if (popupTimer) {
+                popupTimer.textContent = `${this.timeLeft} сек`;
+                
+                // Меняем цвет при малом времени
+                if (this.timeLeft <= 10) {
+                    popupTimer.style.background = '#ff4444';
+                } else if (this.timeLeft <= 30) {
+                    popupTimer.style.background = '#ff9800';
+                } else {
+                    popupTimer.style.background = '#4caf50';
+                }
+            }
+        }
         
         console.log('Time left:', this.timeLeft);
         
         if (this.timeLeft <= 0) {
             console.log('Time is up! Ending level...');
+            // Закрываем попап если время вышло
+            if (this.currentPopup) {
+                document.body.removeChild(this.currentPopup);
+                this.currentPopup = null;
+            }
             this.endLevel();
         }
         
         // Меняем цвет таймера когда мало времени
         if (this.timeLeft <= 10) {
             document.getElementById('timer').style.color = '#ff4444';
+        } else if (this.timeLeft <= 30) {
+            document.getElementById('timer').style.color = '#ff9800';
+        } else {
+            document.getElementById('timer').style.color = '#4caf50';
         }
     }
 
@@ -499,7 +537,7 @@ class GameScene extends Phaser.Scene {
     endLevel() {
         this.gameActive = false;
         
-        // Останавливаем таймер
+        // Останавливаем таймер полностью
         if (this.timer) {
             this.timer.remove();
         }
@@ -594,6 +632,11 @@ class GameScene extends Phaser.Scene {
         if (this.timer) {
             this.timer.remove();
         }
+        // Убираем попап если он остался
+        if (this.currentPopup) {
+            document.body.removeChild(this.currentPopup);
+            this.currentPopup = null;
+        }
     }
 }
 
@@ -602,3 +645,4 @@ window.MainScene = MainScene;
 window.GameScene = GameScene;
 
 console.log('Scenes.js loaded successfully');
+
